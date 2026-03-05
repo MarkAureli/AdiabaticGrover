@@ -157,11 +157,46 @@ def IsEigenvalue {n : ℕ} (M : Matrix (BoolVec n) (BoolVec n) ℝ) (μ : ℝ) :
     Goal state:  IsEigenvalue (Hc n c) μ ↔ ∃ x : BoolVec n, c x = μ -/
 lemma Hc_eigenvalues (n : ℕ) (c : PseudoBool n) (μ : ℝ) :
     IsEigenvalue (Hc n c) μ ↔ ∃ x : BoolVec n, c x = μ := by
-  sorry
+  simp only [IsEigenvalue, IsEigenpair, Hc]
+  constructor
+  · rintro ⟨v, hv, heq⟩
+    obtain ⟨x, hx⟩ : ∃ x, v x ≠ 0 :=
+      not_forall.mp (fun h => hv (funext h))
+    exact ⟨x, mul_right_cancel₀ hx (by
+      have := congr_fun heq x
+      simp only [Matrix.mulVec_diagonal, Pi.smul_apply, smul_eq_mul] at this
+      linarith)⟩
+  · rintro ⟨x, rfl⟩
+    refine ⟨Pi.single x 1, Pi.single_ne_zero_iff.mpr one_ne_zero, ?_⟩
+    simp [← Pi.single_smul', smul_eq_mul]
 
 /-- Eigenvalues of H_b are exactly the values of b.
     Proof: H_b ~ diag(b) via W (using W² = I), so same spectrum.
     Goal state:  IsEigenvalue (Hb n b) μ ↔ ∃ x : BoolVec n, b x = μ -/
 lemma Hb_eigenvalues (n : ℕ) (b : PseudoBool n) (μ : ℝ) :
     IsEigenvalue (Hb n b) μ ↔ ∃ x : BoolVec n, b x = μ := by
-  sorry
+  rw [← Hc_eigenvalues]
+  simp only [IsEigenvalue, IsEigenpair, Hb, Hc]
+  -- W is its own inverse (W² = I), so v ↦ W·v bijects eigenpairs of Hb ↔ eigenpairs of diag(b)
+  have W_inv : ∀ v : BoolVec n → ℝ, (W n).mulVec ((W n).mulVec v) = v := fun v => by
+    rw [Matrix.mulVec_mulVec, W_mul_W, Matrix.one_mulVec]
+  have W_ne_zero : ∀ v : BoolVec n → ℝ, v ≠ 0 → (W n).mulVec v ≠ 0 := fun v hv hw => by
+    exact hv (by rw [← W_inv v, hw, Matrix.mulVec_zero])
+  constructor
+  · rintro ⟨v, hv, heq⟩
+    refine ⟨(W n).mulVec v, W_ne_zero v hv, ?_⟩
+    -- Apply W on left: W·(W·diag(b)·W·v) = diag(b)·(W·v)
+    have := congr_arg (W n).mulVec heq
+    simp only [Matrix.mulVec_mulVec, Matrix.mulVec_smul] at this
+    -- this : (W n * (W n * Matrix.diagonal b * W n)).mulVec v = μ • (W n).mulVec v
+    rw [show W n * (W n * Matrix.diagonal b * W n) = Matrix.diagonal b * W n from by
+      rw [← Matrix.mul_assoc, ← Matrix.mul_assoc, W_mul_W, Matrix.one_mul],
+      ← Matrix.mulVec_mulVec] at this
+    exact this
+  · rintro ⟨w, hw, heq⟩
+    refine ⟨(W n).mulVec w, W_ne_zero w hw, ?_⟩
+    -- W·diag(b)·W·(W·w) = W·diag(b)·w = W·(μ·w) = μ·(W·w)
+    simp only [Matrix.mulVec_mulVec]
+    rw [show W n * Matrix.diagonal b * W n * W n = W n * Matrix.diagonal b from by
+      rw [Matrix.mul_assoc, Matrix.mul_assoc, W_mul_W, Matrix.mul_one]]
+    rw [← Matrix.mulVec_mulVec, heq, Matrix.mulVec_smul]
