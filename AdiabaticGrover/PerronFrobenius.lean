@@ -44,3 +44,17 @@ axiom perron_frobenius {n : ℕ} [Nonempty (BoolVec n)]
     ∃ μ_min : ℝ,
       IsEigenvalue M μ_min ∧
       ∀ μ, IsEigenvalue M μ → μ = μ_min ∨ μ > μ_min
+
+/-- **Perron-Frobenius, positive eigenvector** (axiomatized): The minimum eigenvector
+    of a real symmetric matrix with strictly negative off-diagonal entries can be
+    chosen to have all strictly positive components.
+
+    Reference: Perron (1907), Frobenius (1912); Horn & Johnson "Matrix Analysis" §8.3.4. -/
+axiom perron_frobenius_pos_eigvec {n : ℕ} [Nonempty (BoolVec n)]
+    (M : Matrix (BoolVec n) (BoolVec n) ℝ)
+    (hM : M.IsHermitian)
+    (hoff : HasNegOffDiag M) :
+    ∃ μ_min : ℝ, ∃ v : BoolVec n → ℝ,
+      IsEigenpair M μ_min v ∧
+      (∀ μ, IsEigenvalue M μ → μ = μ_min ∨ μ > μ_min) ∧
+      ∀ x : BoolVec n, 0 < v x
