@@ -141,6 +141,61 @@ lemma Hint_isHermitian (n : ℕ) (b c : PseudoBool n) (t : ℝ) :
   · rw [Matrix.IsHermitian, Matrix.conjTranspose_smul, star_trivial, (Hb_isHermitian n b).eq]
   · rw [Matrix.IsHermitian, Matrix.conjTranspose_smul, star_trivial, (Hc_isHermitian n c).eq]
 
+/-! ## Stoquasticity -/
+
+/-- A pseudo-Boolean function b is **stoquastic** if its (unnormalized) Walsh-Hadamard
+    transform is non-positive at all non-zero frequencies:
+      B̂(k) = ∑_z b(z) * (-1)^{bitDot k z} ≤ 0  for all k ≠ 0.
+    This ensures H_b has non-positive off-diagonal entries (in the standard basis). -/
+def IsStoquastic (n : ℕ) (b : PseudoBool n) : Prop :=
+  ∀ k : BoolVec n, k ≠ 0 → ∑ z : BoolVec n, b z * (-1 : ℝ) ^ bitDot n k z ≤ 0
+
+/-! ## Matrix Entry Formula for H_b -/
+
+/-- Sign identity: (-1)^{x·z} · (-1)^{z·y} = (-1)^{(x⊕y)·z}.
+    Proof: factor both sides as products over coordinates; for each bit,
+    the parity of x_i*z_i + z_i*y_i equals (x_i ⊕ y_i)*z_i (8 Boolean cases). -/
+private lemma neg1_pow_bitDot_xor (n : ℕ) (x y z : BoolVec n) :
+    (-1 : ℝ) ^ bitDot n x z * (-1) ^ bitDot n z y =
+    (-1) ^ bitDot n (fun i => xor (x i) (y i)) z := by
+  simp only [bitDot_pow_neg1_prod, ← Finset.prod_mul_distrib]
+  apply Finset.prod_congr rfl
+  intro i _
+  simp only [← pow_add]
+  -- For each bit: parity of x_i*z_i + z_i*y_i equals (x_i ⊕ y_i)*z_i (8 Bool cases).
+  -- Can't use decide/native_decide: ℝ uses Classical.propDecidable. Case split manually.
+  rcases Bool.eq_false_or_eq_true (x i) with hx | hx <;>
+  rcases Bool.eq_false_or_eq_true (y i) with hy | hy <;>
+  rcases Bool.eq_false_or_eq_true (z i) with hz | hz <;>
+  simp [hx, hy, hz]
+
+/-- Matrix entry formula for H_b:
+      (Hb n b) x y = (∑_z b(z) · (-1)^{(x⊕y)·z}) / 2^n
+    Proof: unfold W, simplify diagonal matrix product, collect √(2^n)² = 2^n,
+    apply `neg1_pow_bitDot_xor`. -/
+theorem Hb_entry (n : ℕ) (b : PseudoBool n) (x y : BoolVec n) :
+    (Hb n b) x y =
+    (∑ z : BoolVec n, b z * (-1 : ℝ) ^ bitDot n (fun i => xor (x i) (y i)) z) / 2 ^ n := by
+  simp only [Hb, Matrix.mul_apply, Matrix.diagonal_apply, mul_ite, mul_zero,
+             Finset.sum_ite_eq', Finset.mem_univ, if_true, W, Matrix.of_apply, whtEntry]
+  -- Goal: ∑ z, (-1)^(bitDot n x z) / √(2^n) * b z * ((-1)^(bitDot n z y) / √(2^n))
+  --     = (∑ z, b z * (-1)^(bitDot n (x⊕y) z)) / 2^n
+  have sqrt_sq : Real.sqrt ((2 : ℝ) ^ n) * Real.sqrt ((2 : ℝ) ^ n) = (2 : ℝ) ^ n :=
+    Real.mul_self_sqrt (by positivity)
+  -- Step 1: rewrite each summand as b z * (-1)^p * (-1)^q / 2^n (field identity after sqrt_sq)
+  conv_lhs =>
+    arg 2; ext z
+    rw [show (-1 : ℝ) ^ bitDot n x z / Real.sqrt ((2 : ℝ) ^ n) * b z *
+            ((-1) ^ bitDot n z y / Real.sqrt ((2 : ℝ) ^ n)) =
+          b z * ((-1 : ℝ) ^ bitDot n x z * (-1) ^ bitDot n z y) / (2 : ℝ) ^ n by
+      rw [div_mul_eq_mul_div, div_mul_div_comm, sqrt_sq]; ring]
+  -- Step 2: pull common denominator 2^n out of the sum
+  rw [← Finset.sum_div]
+  congr 1
+  -- Step 3: apply neg1_pow_bitDot_xor to match the (-1)^(bitDot n (x⊕y) z) form
+  apply Finset.sum_congr rfl; intro z _
+  rw [neg1_pow_bitDot_xor]
+
 /-! ## Eigenvalue Definitions -/
 
 /-- μ is an eigenvalue of M with eigenvector v (over index type BoolVec n). -/
