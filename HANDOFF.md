@@ -104,3 +104,15 @@ For the Grover case (b = 𝟙_{x≠0}, c = 𝟙_{x≠s}), the gap is Θ(1/√N).
 - Created `AdiabaticGrover/MainThm.lean` with main theorem (sorried)
 - Build status: TBD
 - Next: verify build, prove W_mul_W, flesh out eigenvalue theory
+
+### 2026-03-05 (Session 2)
+- Proved `Hb_isHermitian`: `nth_rw 1 [← W_isHermitian n]` + `Matrix.isHermitian_conjTranspose_mul_mul`
+- Proved `Hint_isHermitian`: `Matrix.IsHermitian.add` + `Matrix.conjTranspose_smul` + `star_trivial`
+- Proved `W_mul_W` (P1): via three helpers:
+  - `bitDot_pow_neg1_prod`: factors `(-1)^bitDot` as product over coordinates
+  - `bool_wht_factor`: per-bit Bool sum = 2 (if same) or 0 (if different)
+  - `wht_orthogonality`: `∑_z (-1)^{x·z} * (-1)^{z·y} = if x=y then 2^n else 0`
+    Uses `Finset.prod_mul_distrib` + `(Fintype.prod_sum f).symm` for the sum-product exchange
+- Build: clean (only pre-existing sorries remain)
+- Remaining sorries: `Hc_eigenvalues`, `Hb_eigenvalues`, `analytic_eigcurve_iff`, `gap_implies_analytic_curve`
+- Next: `Hc_eigenvalues` (standard basis eigenvectors of diagonal), then `Hb_eigenvalues` (uses `W_mul_W`)
